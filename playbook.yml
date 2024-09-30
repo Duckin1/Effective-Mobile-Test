@@ -1,0 +1,44 @@
+---
+- hosts: webserver
+  become: yes
+
+  tasks:
+    - name: Install Docker
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - docker.io
+        - docker-compose
+
+    - name: Create application directory
+      file:
+        path: /opt/myapp
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose.yml to server
+      copy:
+        src: docker-compose.yml
+        dest: /opt/myapp/docker-compose.yml
+
+    - name: Copy Dockerfile to server (for PHP)
+      copy:
+        src: Dockerfile
+        dest: /opt/myapp/Dockerfile
+
+    - name: Copy nginx config template
+      template:
+        src: roles/nginx/templates/nginx.conf.j2
+        dest: /opt/myapp/nginx.conf
+
+    - name: Build and start the Docker containers
+      command: docker-compose up -d
+      args:
+        chdir: /opt/myapp
+
+    - name: Restart nginx if config has changed
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
